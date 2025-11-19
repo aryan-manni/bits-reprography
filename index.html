@@ -1,0 +1,606 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AV Facility Bill</title>
+  <style>
+    /* Page & print setup */
+    @page { size: A4; margin: 12mm; }
+    html,body{height:100%;margin:0;padding:0;font-family: Calibri, 'Segoe UI', Arial, sans-serif;}
+    .page{width:210mm;min-height:297mm;padding:12mm;box-sizing:border-box}
+
+    /* header */
+    .center{ text-align:center; }
+    h1{font-size:18px;margin:0;letter-spacing:1px}
+    h2{font-size:14px;margin:2px 0}
+
+    /* layout */
+    .meta{display:flex;gap:16px;margin-top:18px}
+    .meta .block{flex:1}
+    .meta label{display:block;font-weight:600;font-size:13px}
+
+    /* red editable and yellow dropdown styles */
+    .editable{background:hwb(0 100% 0%);border:1px solid #000000;padding:6px;border-radius:3px}
+    .dropdown{background:#ffffff;border:1px solid #000000;padding:6px;border-radius:3px}
+    input[type=text], select {font-size:13px;width:100%;box-sizing:border-box}
+
+    table.bill{width:100%;border-collapse:collapse;margin-top:12px}
+    table.bill th, table.bill td{border:1px solid #000000;padding:6px;font-size:13px}
+    table.bill th{background:#ffffff;text-align:left}
+    .right{text-align:right}
+
+    .small-note{font-size:12px;margin-top:10px}
+
+    /* amount column align */
+    .amount{width:100px;text-align:right}
+    .rate{width:80px;text-align:right}
+    .hrs{width:100px}
+
+    /* total box */
+    .total-row td{font-weight:700}
+
+    /* print tweaks */
+    @media print{
+      body{background:white}
+      .page{box-shadow:none}
+      .no-print{display:none}
+      /* show formatted date on print (we keep only the visible text input) */
+      input.row-date-picker, input#datePicker, .date-picker { display:none !important; }
+    }
+
+    .grid-like td, .grid-like th{background-clip:padding-box}
+
+    /* small pointer cue for clickable date text */
+    .date-text { cursor: pointer; background:#fff; }
+
+    /* style for the inline facility/hrs input that replaces the select when "Other" chosen */
+    .av-custom, .hrs-custom { padding:6px;border-radius:3px;border:1px solid #000; font-size:13px; width:100%; box-sizing:border-box }
+  </style>
+</head>
+<body>
+  <div class="page" id="page">
+    <div class="center">
+      <img src="Instumentation_Unit_Logo.png" alt="Header Image" style="width:100%;max-width:650px;margin-top:10px;" />
+    </div>
+
+    <div style="margin-top:14px" class="meta">
+      <div class="block">
+        <label>BILL NO :</label>
+        <input class="editable" id="billNo" type="text" value="01" />
+      </div>
+      <div class="block">
+        <label>Date :</label>
+        <!-- visible formatted date (dd-mm-yyyy) - now editable -->
+        <input class="editable date-text" id="date" type="text" value="01-11-2025" onclick="openDatePicker('#datePicker', this)" />
+        <!-- hidden native date picker (used to pick date). It syncs to the visible field in dd-mm-yyyy -->
+        <input id="datePicker" class="date-picker no-print" type="date" style="display:none" onchange="syncDateFromPicker(this, document.getElementById('date'))" />
+      </div>
+      <div class="block">
+        <label>NAME :</label>
+        <input class="editable" id="name" type="text" value="Ragmalika (SU)" />
+      </div>
+    </div>
+
+    <div style="margin-top:8px">
+      <label style="font-weight:700">PARTICULARS OF THE FUNCTION :</label>
+      <input class="editable" id="functionName" type="text" value="Nritya Ranjani 2025" style="width:60%;margin-left:8px;" />
+    </div>
+
+    <table class="bill grid-like" id="billTable">
+      <thead>
+        <tr>
+          <th style="width:110px">Date</th>
+          <th>Event</th>
+          <th>Venue</th>
+          <th>AV Facility</th>
+          <th class="hrs">Total Hours</th>
+          <th class="rate">Rate/Hrs</th>
+          <th class="amount">Amount</th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+        <!-- 2 example rows updated with date-picker + formatted text -->
+        <tr>
+          <td>
+            <input class="editable date-text" type="text" value="26-09-2025" onclick="openDatePickerForRow(this)" />
+            <input class="row-date-picker no-print" type="date" style="display:none" onchange="syncRowDate(this)" />
+          </td>
+          <td><input class="editable" type="text" value="Rehearshal"></td>
+          <td><input class="editable" type="text" value="Main Audi"></td>
+          <td>
+            <select class="dropdown av-select" onchange="onFacilityChange(this);">
+              <option value="PA">PA</option>
+              <option value="LED*2">LED*2</option>
+              <option value="Light">Light</option>
+              <option value="Mic">Mic</option>
+              <option value="__custom__">Other...</option>
+            </select>
+          </td>
+          <td>
+            <select class="dropdown hrs-select" onchange="onHrsChange(this);"></select>
+          </td>
+          <td><input class="dropdown rate-input" type="text" readonly></td>
+          <td><input class="editable amount-input" type="text" readonly></td>
+
+          <td class="no-print">
+            <button onclick="deleteRow(this)">❌</button>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <input class="editable date-text" type="text" value="27-09-2025" onclick="openDatePickerForRow(this)" />
+            <input class="row-date-picker no-print" type="date" style="display:none" onchange="syncRowDate(this)" />
+          </td>
+          <td><input class="editable" type="text" value="Nritya Ranjani"></td>
+          <td><input class="editable" type="text" value="Main Audi"></td>
+          <td>
+            <select class="dropdown av-select" onchange="onFacilityChange(this);">
+              <option value="PA">PA</option>
+              <option value="LED*2">LED*2</option>
+              <option value="Light">Light</option>
+              <option value="Mic">Mic</option>
+              <option value="__custom__">Other...</option>
+            </select>
+          </td>
+          <td>
+            <select class="dropdown hrs-select" onchange="onHrsChange(this);"></select>
+          </td>
+          <td><input class="dropdown rate-input" type="text" readonly></td>
+          <td><input class="editable amount-input" type="text" readonly></td>
+
+          <td class="no-print">
+            <button onclick="deleteRow(this)">❌</button>
+          </td>
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr class="total-row">
+          <td colspan="6" style="text-align:right">Total</td>
+          <td><input id="grandTotal" type="text" readonly style="font-weight:700;width:100%;box-sizing:border-box;text-align:right;padding:6px"></td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <div class="small-note">
+      <p><strong>TOTAL AMOUNT OF THE BILL:</strong> Rs. <span id="totalLabel">6,210.00</span></p>
+    </div>
+
+    <div style="margin-top:24px;display:flex;gap:18px;align-items:flex-start">
+      <div style="flex:1">
+        <label class="small-note">INCHARGE</label>
+      </div>
+      <div style="flex:1;text-align:center">
+        <label class="small-note">FACULTY-IN-CHARGE</label>
+      </div>
+    </div>
+
+    <div style="margin-top:10px;font-size:12px">
+      PLEASE MAKE THE VOUCHER IN THE NAME OF FACULTY-IN-CHARGE INSTRUMENTATION UNIT. MONEY
+      SHOULD BE DEPOSITED IN THE CSF &amp; PA SYSTEM A/C WITH THE RECEIPT OF DEPOSITS
+      SHOULD BE GIVEN TO THE IU OFFICE
+    </div>
+
+    <div style="margin-top:16px" class="no-print">
+      <button onclick="window.print()">Print / Save as PDF</button>
+      <button onclick="addRow()">Add row</button>
+    </div>
+  </div>
+
+  <script>
+    // Rate mapping: change/extend as needed
+    const rateMap = {
+      'PA':180,
+      'LED*2':180,
+      'Light':180,
+      'Mic':120,
+      // custom facilities default to 0 rate (you can change later)
+    };
+
+    // populate hours dropdowns (0 to 24 step 0.5) and add an "Other..." option at end
+    function populateHrs(select){
+      select.innerHTML = '';
+      for(let i=0;i<=48;i++){
+        const val = (i*0.5).toFixed(1);
+        const opt = document.createElement('option');
+        opt.value = val;
+        opt.text = val;
+        select.appendChild(opt);
+      }
+      const customOpt = document.createElement('option');
+      customOpt.value = '__hrs_custom__';
+      customOpt.text = 'Other...';
+      select.appendChild(customOpt);
+
+      // handle immediate change: if user selects Other..., replace with input
+      select.onchange = function(){ onHrsChange(this); };
+    }
+
+    // helpers to convert between yyyy-mm-dd and dd-mm-yyyy
+    function toDDMMYYYYFromDateObject(d){
+      const day = String(d.getDate()).padStart(2,'0');
+      const month = String(d.getMonth()+1).padStart(2,'0');
+      const year = d.getFullYear();
+      return `${day}-${month}-${year}`;
+    }
+    function toYYYYMMDDFromDateObject(d){
+      const day = String(d.getDate()).padStart(2,'0');
+      const month = String(d.getMonth()+1).padStart(2,'0');
+      const year = d.getFullYear();
+      return `${year}-${month}-${day}`;
+    }
+    function parseDDMMYYYYToDate(s){
+      // expect dd-mm-yyyy
+      const parts = (s||'').trim().split('-');
+      if(parts.length!==3) return null;
+      const d = parseInt(parts[0],10);
+      const m = parseInt(parts[1],10) - 1;
+      const y = parseInt(parts[2],10);
+      if(isNaN(d)||isNaN(m)||isNaN(y)) return null;
+      const date = new Date(y,m,d);
+      // simple validity check (Date will roll over invalid dates)
+      if(date.getFullYear() !== y || date.getMonth() !== m || date.getDate() !== d) return null;
+      return date;
+    }
+
+    // Top date handlers
+    function openDatePicker(pickerSelector, visibleEl){
+      const picker = document.querySelector(pickerSelector);
+      if(!picker) return;
+      try{
+        if(typeof picker.showPicker === 'function'){
+          picker.showPicker();
+        } else {
+          picker.style.display = 'inline-block';
+          picker.focus();
+        }
+      } catch(e){
+        picker.style.display = 'inline-block';
+        picker.focus();
+      }
+      // link so change handler updates visible
+      picker._linkedInput = visibleEl;
+    }
+    function syncDateFromPicker(pickerEl, visibleEl){
+      const val = pickerEl.value; // yyyy-mm-dd
+      if(!val) return;
+      const [y,m,d] = val.split('-').map(x=>parseInt(x,10));
+      const dd = String(d).padStart(2,'0');
+      const mm = String(m).padStart(2,'0');
+      visibleEl.value = `${dd}-${mm}-${y}`;
+      pickerEl.style.display = 'none';
+    }
+
+    // Row date handlers (for table rows)
+    function openDatePickerForRow(visibleEl){
+      const picker = visibleEl.parentNode.querySelector('.row-date-picker');
+      if(!picker) return;
+      try{
+        if(typeof picker.showPicker === 'function'){
+          picker.showPicker();
+        } else {
+          picker.style.display = 'inline-block';
+          picker.focus();
+        }
+      } catch(e){
+        picker.style.display = 'inline-block';
+        picker.focus();
+      }
+      picker._linkedInput = visibleEl;
+    }
+    function syncRowDate(pickerEl){
+      const linked = pickerEl._linkedInput || pickerEl.parentNode.querySelector('.date-text');
+      if(!linked) return;
+      if(!pickerEl.value){
+        linked.value = '';
+        return;
+      }
+      const [y,m,d] = pickerEl.value.split('-').map(x=>parseInt(x,10));
+      const dd = String(d).padStart(2,'0');
+      const mm = String(m).padStart(2,'0');
+      linked.value = `${dd}-${mm}-${y}`;
+      pickerEl.style.display = 'none';
+    }
+
+    // When user types into visible date, try to sync typed dd-mm-yyyy to native picker
+    function updatePickerFromVisible(visibleEl){
+      const picker = (visibleEl.id === 'date') ? document.getElementById('datePicker') : visibleEl.parentNode.querySelector('.row-date-picker');
+      if(!picker) return;
+      const parsed = parseDDMMYYYYToDate(visibleEl.value);
+      if(parsed){
+        picker.value = toYYYYMMDDFromDateObject(parsed);
+        picker._linkedInput = visibleEl;
+      }
+      // if invalid, don't modify picker (user may still be typing)
+    }
+
+    function onVisibleDateBlur(visibleEl){
+      // when leaving the input, if date is valid, normalize formatting and sync picker
+      const parsed = parseDDMMYYYYToDate(visibleEl.value);
+      if(parsed){
+        visibleEl.value = toDDMMYYYYFromDateObject(parsed);
+        const picker = (visibleEl.id === 'date') ? document.getElementById('datePicker') : visibleEl.parentNode.querySelector('.row-date-picker');
+        if(picker) picker.value = toYYYYMMDDFromDateObject(parsed);
+      } else {
+        // keep whatever user typed (no destructive override). Could show a validation style here if desired.
+      }
+    }
+
+    // --- Facility handling: when user selects "Other..." we replace the <select> with an inline text input
+    function createCustomFacilityInput(oldSelect){
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'av-custom';
+      input.placeholder = 'Type facility name';
+      input.value = '';
+
+      // store a back-reference so we can recreate the select later
+      input._originalSelectHTML = oldSelect.outerHTML;
+
+      // when user types in custom facility, allow editing the rate (make rate-input editable)
+      input.addEventListener('input', function(){
+        const row = input.closest('tr');
+        const rateInput = row.querySelector('.rate-input');
+        // allow user to edit rate for custom facility
+        rateInput.readOnly = false;
+        if(rateInput.value === '' || rateInput.value === '0') rateInput.value = '0';
+        recalculate();
+      });
+
+      // double-clicking the custom input will revert it back to the original select (optional UX)
+      input.addEventListener('dblclick', function(){
+        const cell = input.parentNode;
+        cell.removeChild(input);
+        // recreate select from original HTML
+        const temp = document.createElement('div');
+        temp.innerHTML = input._originalSelectHTML;
+        const sel = temp.firstElementChild;
+        cell.appendChild(sel);
+        // re-attach handlers
+        sel.onchange = function(){ onFacilityChange(sel); };
+        // set rate based on selected value and set rate-input readonly again
+        onFacilityChange(sel);
+      });
+
+      return input;
+    }
+
+    // --- Hours handling: when user selects "Other..." we replace the <select> with an inline numeric input
+    function createCustomHrsInput(oldSelect){
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.step = '0.5';
+      input.min = '0';
+      input.className = 'hrs-custom';
+      input.placeholder = 'Enter hours (e.g. 2.5)';
+      input.value = '';
+
+      // store a back-reference so we can recreate the select later
+      input._originalSelectHTML = oldSelect.outerHTML;
+
+      input.addEventListener('input', function(){
+        // ensure numeric value and recalc
+        const row = input.closest('tr');
+        const val = parseFloat(input.value) || 0;
+        // normalize to one decimal place (matching .5 steps)
+        // don't force formatting here so user can keep typing; recalc will use the numeric value
+        recalculate();
+      });
+
+      // double-clicking the custom input will revert it back to the original select
+      input.addEventListener('dblclick', function(){
+        const cell = input.parentNode;
+        cell.removeChild(input);
+        const temp = document.createElement('div');
+        temp.innerHTML = input._originalSelectHTML;
+        const sel = temp.firstElementChild;
+        cell.appendChild(sel);
+        // re-populate options and handlers
+        populateHrs(sel);
+        // set to nearest matching value if any
+        sel.value = '0.0';
+        sel.onchange = function(){ onHrsChange(this); };
+        recalculate();
+      });
+
+      return input;
+    }
+
+    function onFacilityChange(el){
+      // el can be a select or input (if custom replaced select)
+      const row = el.closest('tr');
+      const rateInput = row.querySelector('.rate-input');
+      const hrsSel = row.querySelector('.hrs-select') || row.querySelector('.hrs-custom');
+
+      // if it's a select and user chose custom value marker, replace it with an input
+      if(el.tagName.toLowerCase() === 'select'){
+        if(el.value === '__custom__'){
+          const customInput = createCustomFacilityInput(el);
+          const cell = el.parentNode;
+          cell.removeChild(el);
+          cell.appendChild(customInput);
+          // focus so user can type immediately
+          setTimeout(()=> customInput.focus(), 0);
+          // set rate to 0 for custom and make it editable
+          rateInput.value = '0';
+          rateInput.readOnly = false;
+          if(hrsSel && !hrsSel.value) hrsSel.value = '0.0';
+          recalculate();
+          return;
+        }
+        // normal select value
+        const facility = el.value;
+        const rate = rateMap[facility] !== undefined ? rateMap[facility] : 0;
+        rateInput.value = rate;
+        // make sure rate input is readonly for known facilities
+        rateInput.readOnly = true;
+      } else if(el.tagName.toLowerCase() === 'input'){
+        // editing the custom facility name - keep rate editable (user can set it)
+        rateInput.readOnly = false;
+        if(rateInput.value === '') rateInput.value = '0';
+      }
+
+      if(!hrsSel || !hrsSel.value) {
+        // if hrs is not set, ensure it has a default
+        if(hrsSel && hrsSel.classList.contains('hrs-custom')){
+          // leave as is
+        } else if(hrsSel) hrsSel.value = '0.0';
+      }
+      recalculate();
+    }
+
+    function onHrsChange(el){
+      // if user selected the custom marker, replace select with numeric input
+      if(el.value === '__hrs_custom__'){
+        const customInput = createCustomHrsInput(el);
+        const cell = el.parentNode;
+        cell.removeChild(el);
+        cell.appendChild(customInput);
+        setTimeout(()=> customInput.focus(), 0);
+        recalculate();
+        return;
+      }
+      recalculate();
+    }
+
+    function recalcRow(row){
+      const rate = parseFloat(row.querySelector('.rate-input').value) || 0;
+      // hours element may be a select (.hrs-select) or an input (.hrs-custom)
+      const hrsElem = row.querySelector('.hrs-select') || row.querySelector('.hrs-custom');
+      let hrs = 0;
+      if(hrsElem){
+        if(hrsElem.tagName.toLowerCase() === 'select') hrs = parseFloat(hrsElem.value) || 0;
+        else hrs = parseFloat(hrsElem.value) || 0;
+      }
+      const amt = rate * hrs;
+      row.querySelector('.amount-input').value = amt.toFixed(2);
+      return amt;
+    }
+
+    function recalculate(){
+      let total = 0;
+      document.querySelectorAll('#tbody tr').forEach(tr=>{
+        total += recalcRow(tr);
+      });
+      document.getElementById('grandTotal').value = total.toFixed(2);
+      document.getElementById('totalLabel').innerText = Number(total).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+    }
+
+    function attachRowDateHandlers(tr){
+      const dateText = tr.querySelector('.date-text');
+      const datePicker = tr.querySelector('.row-date-picker');
+      if(!dateText || !datePicker) return;
+
+      // sync initial values if present
+      const parsed = parseDDMMYYYYToDate(dateText.value);
+      if(parsed) datePicker.value = toYYYYMMDDFromDateObject(parsed);
+
+      // click still opens picker
+      dateText.onclick = function(){ openDatePickerForRow(this); };
+
+      // when picker changes -> update visible (syncRowDate already wired via onchange on picker)
+      datePicker.onchange = function(){ syncRowDate(this); };
+
+      // when user types -> attempt to update picker (on input) and normalize on blur
+      dateText.addEventListener('input', ()=> updatePickerFromVisible(dateText));
+      dateText.addEventListener('blur', ()=> onVisibleDateBlur(dateText));
+    }
+
+    function addRow(){
+        const tbody = document.getElementById('tbody');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>
+              <input class="editable date-text" type="text" value="" onclick="openDatePickerForRow(this)" />
+              <input class="row-date-picker no-print" type="date" style="display:none" onchange="syncRowDate(this)" />
+            </td>
+            <td><input class="editable" type="text" value=""></td>
+            <td><input class="editable" type="text" value=""></td>
+            <td>
+                <select class="dropdown av-select" onchange="onFacilityChange(this);">
+                    <option value="PA">PA</option>
+                    <option value="LED*2">LED*2</option>
+                    <option value="Light">Light</option>
+                    <option value="Mic">Mic</option>
+                    <option value="__custom__">Other...</option>
+                </select>
+            </td>
+            <td>
+                <select class="dropdown hrs-select" onchange="onHrsChange(this);"></select>
+            </td>
+            <td><input class="dropdown rate-input" type="text" readonly></td>
+            <td><input class="editable amount-input" type="text" readonly></td>
+
+            <!-- DELETE BUTTON -->
+            <td class="no-print">
+                <button onclick="deleteRow(this)">❌</button>
+            </td>
+        ` ;
+        tbody.appendChild(tr);
+        // populate hours & set rate
+        populateHrs(tr.querySelector('.hrs-select'));
+        // attach change handler for av-select (the select will call onFacilityChange when changed)
+        const sel = tr.querySelector('.av-select');
+        sel.onchange = function(){ onFacilityChange(this); };
+
+        // attach date handlers for this row
+        attachRowDateHandlers(tr);
+
+        // set initial rates
+        onFacilityChange(sel);
+    }
+    function deleteRow(btn){
+        const row = btn.closest('tr');
+        row.remove();
+        recalculate();
+    }
+
+    // helper to get facility label for a row (whether select or custom input)
+    function getFacilityLabel(row){
+      const cell = row.children[3]; // 4th column
+      const select = cell.querySelector('select');
+      const input = cell.querySelector('input');
+      if(input && input.classList.contains('av-custom')) return input.value.trim();
+      if(select) return select.value;
+      return '';
+    }
+
+    // initialize existing rows and top date value
+    function init(){
+      document.querySelectorAll('.hrs-select').forEach(populateHrs);
+
+      // rows: ensure row-date-picker are synced with visible date-text values (if prefilled) and attach handlers
+      document.querySelectorAll('#tbody tr').forEach(tr=>{
+        attachRowDateHandlers(tr);
+        // attach av-select change handler (in case user hasn't interacted yet)
+        const cell = tr.children[3];
+        const sel = cell.querySelector('.av-select');
+        if(sel) sel.onchange = function(){ onFacilityChange(sel); };
+      });
+
+      // top date: if date text has dd-mm-yyyy, set datePicker value to match (so picker opens on same date)
+      const topDateText = document.getElementById('date');
+      const topPicker = document.getElementById('datePicker');
+      if(topDateText && topPicker){
+        const parsed = parseDDMMYYYYToDate(topDateText.value);
+        if(parsed) topPicker.value = toYYYYMMDDFromDateObject(parsed);
+        topPicker._linkedInput = topDateText;
+
+        // wire typing/blur on the top date
+        topDateText.addEventListener('input', ()=> updatePickerFromVisible(topDateText));
+        topDateText.addEventListener('blur', ()=> onVisibleDateBlur(topDateText));
+
+        // clicking still opens picker
+        topDateText.onclick = function(){ openDatePicker('#datePicker', this); };
+      }
+
+      // set initial rates based on facility
+      document.querySelectorAll('.av-select').forEach(s=>onFacilityChange(s));
+      recalculate();
+    }
+
+    // init on load
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
