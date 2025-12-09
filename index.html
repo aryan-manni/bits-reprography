@@ -33,20 +33,100 @@
     .small-note{font-size:12px;margin-top:10px}
 
     /* amount column align */
-    .amount{width:100px;text-align:right}
+    .amount{text-align:right}
     .rate{width:80px;text-align:right}
     .hrs{width:100px}
 
     /* total box */
     .total-row td{font-weight:700}
 
+    /* Make column widths deterministic so nth-child widths are respected */
+table.bill {
+  table-layout: fixed;
+}
+
+/* ensure long text wraps instead of pushing width */
+table.bill td, table.bill th {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+
+    table.bill th:nth-child(1),
+    table.bill td:nth-child(1) { /* Date */
+      width: 85px;            /* decreased */
+      max-width: 90px;
+    }
+
+    table.bill th:nth-child(2),
+    table.bill td:nth-child(2) { /* Event */
+      width: 15%;             /* increased */
+      max-width: 160px;
+    }
+
+    table.bill th:nth-child(3),
+    table.bill td:nth-child(3) { /* Venue */
+      width: 120px;             /* increased */
+      max-width: 120px;
+    }
+
+    table.bill th:nth-child(4),
+    table.bill td:nth-child(4) { /* AV Facility */
+      width: 10%;             /* increased */
+      max-width: 110px;
+    }
+
+    table.bill th:nth-child(5),
+    table.bill td:nth-child(5) { /* Total Hours */
+      width: 62px;            /* decreased */
+      max-width: 80px;
+    }
+
+    table.bill th:nth-child(6),
+    table.bill td:nth-child(6) { /* Rate/Hrs */
+      width: 48px;            /* decreased */
+      max-width: 70px;
+    }
+
+    table.bill th:nth-child(7),
+    table.bill td:nth-child(7) { /* Amount */
+      width: 70px;            /* decreased */
+      max-width: 90px;
+    }
+
+    /* ensure inputs/selects adapt to constrained cells */
+    table.bill input,
+    table.bill select {
+      box-sizing: border-box;
+      width: 100%;
+      min-width: 0;
+    }
+
     /* print tweaks */
-    @media print{
+    @media print {
       body{background:white}
       .page{box-shadow:none}
       .no-print{display:none}
       /* show formatted date on print (we keep only the visible text input) */
       input.row-date-picker, input#datePicker, .date-picker { display:none !important; }
+
+      /* Remove dropdown arrow for AV Facility (col 4) and Total Hours (col 5) */
+      table.bill td:nth-child(4) select,
+      table.bill td:nth-child(5) select {
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background-image: none;
+        background: transparent;
+        padding-right: 6px;
+        cursor: default;
+      }
+
+      /* IE/old Edge */
+      table.bill td:nth-child(4) select::-ms-expand,
+      table.bill td:nth-child(5) select::-ms-expand {
+        display: none;
+      }
     }
 
     .grid-like td, .grid-like th{background-clip:padding-box}
@@ -90,7 +170,7 @@
     <table class="bill grid-like" id="billTable">
       <thead>
         <tr>
-          <th style="width:110px">Date</th>
+          <th>Date</th>
           <th>Event</th>
           <th>Venue</th>
           <th>AV Facility</th>
